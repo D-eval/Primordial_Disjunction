@@ -1,0 +1,19 @@
+step=2560
+
+[1] task=forward
+input      : |forward|mul(136,inv(112))
+target     : |bos|1.21429|eos|
+prediction : |bos|1.27777|eos|
+exact_match: False
+success    : False
+invalid    : False
+gap        : pred=1.2777700000, target=1.2142857143, abs_diff=0.0634842857
+
+[2] task=forward
+input      : |forward|mul(468,inv(116))
+target     : |bos|4.03448|eos|
+prediction : |bos|3.57777|eos|
+exact_match: False
+success    : False
+invalid    : False
+gap        : pred=3.5777700000, target=4.0344827586, abs_diff=0.4567127586

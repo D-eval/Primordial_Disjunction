@@ -1,0 +1,25 @@
+{
+  "active_tasks": [
+    "forward"
+  ],
+  "all_tasks": {
+    "forward": {
+      "template_count": 6,
+      "raw_expression_count": 1500000
+    },
+    "inverse": {
+      "template_count": 5,
+      "raw_expression_count_before_simplify": 62625750000
+    },
+    "simplify": {
+      "raw_expression_count_upper_bound": 516231973097451553610600756927490125818139060500,
+      "special_expression_count_upper_bound": 8173718339818906307387803451790866745124058000
+    }
+  },
+  "active_task_sample_space": {
+    "forward": {
+      "template_count": 6,
+      "raw_expression_count": 1500000
+    }
+  }
+}
