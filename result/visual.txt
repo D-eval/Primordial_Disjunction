@@ -1,19 +1,19 @@
-step=2560
+step=74000
 
 [1] task=forward
-input      : |forward|mul(136,inv(112))
-target     : |bos|1.21429|eos|
-prediction : |bos|1.27777|eos|
+input      : |forward|mul(129,76)
+target     : |bos|9804.00000|eos|
+prediction : |bos|9664.00000|eos|
 exact_match: False
 success    : False
 invalid    : False
-gap        : pred=1.2777700000, target=1.2142857143, abs_diff=0.0634842857
+gap        : pred=9664.0000000000, target=9804.0000000000, abs_diff=140.0000000000
 
 [2] task=forward
-input      : |forward|mul(468,inv(116))
-target     : |bos|4.03448|eos|
-prediction : |bos|3.57777|eos|
-exact_match: False
-success    : False
+input      : |forward|add(111,56)
+target     : |bos|167.00000|eos|
+prediction : |bos|167.00000|eos|
+exact_match: True
+success    : True
 invalid    : False
-gap        : pred=3.5777700000, target=4.0344827586, abs_diff=0.4567127586
+gap        : pred=167.0000000000, target=167.0000000000, abs_diff=0.0000000000

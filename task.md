@@ -72,3 +72,91 @@ average expression length
 
 每个文件实现一个类，然后在 if __name__=="__main__": 里写测试内容
 
+data_generate.py ，|forward| 模式中，要生成求解步骤，比如说
+
+mul add 12 34 56
+
+这种应该生成求解步骤
+|beginOfThink|
+r0 = mul r1 r2
+r1 = add r3 r4 
+r3 = 12 
+r4 = 34
+r1 = add 12 34 
+    add 12 34
+    = addPad 12 34
+    = addPos (2 4) (1 3)
+    = addPosRes (6 0) (4 0)
+    = addRes 6 (0 4) 0
+    = addRes 6 4 0
+    = 046
+    = 46
+r1 = 46
+r2 = 56 
+r0 = mul 46 56 
+mul add 40 6 add 50 6 
+= ladd (mul 40 50 mul 40 6 mul 6 50 mul 6 6)
+= ladd (2000 240 300 36)
+= add 2000 ladd (240 300 36)
+= add 2000 add 240 ladd (300 36)
+= add 2000 add 240 add 300 36
+    add 300 36
+    = addPad 300 036
+    = addPos (0 6) (0 3) (3 0)
+    = addPosRes (6 0) (3 0) (3 0)
+    = addRes 6 (0 3) (0 3) 0
+    = addRes 6 3 3 0
+    = 0336
+    = 336
+= add 2000 add 240 336
+    add 240 336
+    = addPad 240 336
+    = addPos (0 6) (4 3) (2 3)
+    = addPosRes (6 0) (7 0) (5 0)
+    = addRes 6 (0 7) (0 5) 0
+    = addRes 6 7 5 0
+    = 0576
+    = 576
+= add 2000 576
+    add 2000 576
+    = addPad 2000 0576
+    = addPos (0 6) (0 7) (0 5) (2 0)
+    = addPosRes (6 0) (7 0) (5 0) (2 0) 0
+    = addRes 6 7 5 2 0
+    = 02576
+    = 2576
+= 2576
+|endOfThink|
+
+加法的话，进位要考虑
+
+哦对，还有减法
+
+    add neg 543 357
+    = add 357 neg 543
+    = sub 357 543
+    = neg sub 543 357
+        sub 543 357
+        = subPad 543 357
+        = subPos (3 7) (4 5) (5 3)
+        = subPos (13 7) (3 5) (5 3)
+        = subPos (13 7) (13 5) (4 3)
+        = subRes 5 8 1
+        = 185
+    = neg 185
+
+也就是说，
+需要把递归计算显式写出来
+另外，每种运算也要把计算过程写出来
+
+然后，我需要在运行 data_generate.py 的时候看到完整|forward|的SFT数据格式
+在 train.py 中也要如此训练
+
+
+好的，现在看看 forward_template 里的 |forward| 需要多大的上下文token
+
+
+
+
+
+python3 data_generate.py --trace 'ladd(34,45,mul(4,5))'

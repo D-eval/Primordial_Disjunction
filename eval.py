@@ -13,6 +13,13 @@ def tokens_to_text(tokens: List[str]) -> str:
     return "".join(token for token in tokens if token not in {"|bos|", "|eos|"})
 
 
+def extract_final_answer_tokens(tokens: List[str]) -> List[str]:
+    if "|endOfThink|" not in tokens:
+        return tokens
+    start = tokens.index("|endOfThink|") + 1
+    return [token for token in tokens[start:] if token not in {"|bos|", "|eos|"}]
+
+
 class ExpressionParser:
     def __init__(self):
         self.unary_ops = {
@@ -95,7 +102,7 @@ def evaluate_forward_like_prediction(
     output_tokens: List[str],
     example: Dict,
 ) -> PredictionResult:
-    predicted_text = tokens_to_text(output_tokens)
+    predicted_text = tokens_to_text(extract_final_answer_tokens(output_tokens))
     exact_match = output_tokens == example["output_tokens"]
     try:
         predicted_value = float(predicted_text)

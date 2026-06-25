@@ -28,10 +28,28 @@ cfg.opsToken2ops = {
 cfg.opsTokens = list(cfg.opsToken2ops.keys())
 cfg.digital_token = [str(i) for i in range(cfg.base_system)]
 cfg.special_token = [
+    "|beginOfThink|",
+    "|endOfThink|",
+    "|nl|",
+    "|indent|",
+    "|sp|",
     "|bos|",
     "|eos|", 
 ]
 cfg.punctuation_tokens = ["(", ")", ",", ".", "-"]
+cfg.trace_tokens = [
+    "=",
+    "r",
+    "addPad",
+    "addPos",
+    "addPosRes",
+    "addRes",
+    "ladd",
+    "sub",
+    "subPad",
+    "subPos",
+    "subRes",
+]
 
 cfg.task_describe_token = [
     # 提示任务类型
@@ -45,6 +63,7 @@ cfg.all_tokens = _unique_keep_order(
     + cfg.digital_token
     + cfg.special_token
     + cfg.punctuation_tokens
+    + cfg.trace_tokens
 )
 
 
@@ -56,7 +75,7 @@ cfg.dataset.value_precision = 5
 
 cfg.model = argparse.Namespace()
 cfg.model.use_rope = True
-cfg.model.max_seq_len = 128
+cfg.model.max_seq_len = 8192
 cfg.model.layer_num = 24
 cfg.model.hidden_dim = 128
 cfg.model.head_num = 8
@@ -80,12 +99,12 @@ cfg.train.lr = 3e-4
 cfg.train.weight_decay = 0.01
 cfg.train.grad_clip = 1.0
 cfg.train.log_per_step = 5
-cfg.train.save_per_step = 20
-cfg.train.eval_per_step = 20
+cfg.train.save_per_step = 2000
+cfg.train.eval_per_step = 2000
 cfg.train.eval_sample_num = 2
 cfg.train.task_names = ["forward"] # ["forward", "inverse", "simplify"]
 cfg.train.task_probs = [1]# [1.0, 1.0, 1.0]
-cfg.train.device = "mps"
+cfg.train.device = "cuda"
 cfg.train.param_save_dir = "./params"
 cfg.train.result_save_dir = "./result"
 cfg.train.visual_save_dir = "./result"
@@ -95,12 +114,12 @@ cfg.train.sample_space_json_name = "sample_space.json"
 cfg.train.load_last_ckpt = True
 cfg.train.last_ckpt_name = "last.pt"
 cfg.train.best_ckpt_name = "best.pt"
-cfg.train.total_step = 200000
+cfg.train.total_step = 200000000
 
 cfg.eval = argparse.Namespace()
 cfg.eval.device = "mps"
 cfg.eval.batch_size = 64
 cfg.eval.sample_num = 2
-cfg.eval.max_new_tokens = 24
+cfg.eval.max_new_tokens = 8192
 cfg.eval.task_names = ["forward", "inverse", "simplify"]
 cfg.eval.ckpt_path = None

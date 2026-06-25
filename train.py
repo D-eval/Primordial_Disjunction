@@ -225,8 +225,12 @@ def maybe_load_checkpoint(
         return 0, float("-inf"), []
 
     checkpoint = torch.load(path, map_location=device)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    try:
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    except RuntimeError as exc:
+        print({"skip_checkpoint": path, "reason": str(exc).splitlines()[0]})
+        return 0, float("-inf"), []
     start_step = int(checkpoint.get("step", 0))
     best_score = float(checkpoint.get("best_score", float("-inf")))
     loss_history = list(checkpoint.get("loss_history", []))

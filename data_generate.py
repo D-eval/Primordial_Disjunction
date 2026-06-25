@@ -1,3 +1,4 @@
+import argparse
 import math
 import random
 from dataclasses import dataclass
@@ -20,6 +21,12 @@ class ExpressionNode:
             return float(self.value)
 
         child_values = [child.evaluate() for child in self.children]
+        if self.op == "ladd":
+            result = sum(child_values)
+            if not math.isfinite(result):
+                raise ValueError("Expression evaluated to a non-finite value.")
+            return float(result)
+
         func = cfg.opsToken2ops[self.op]["func"]
         if len(child_values) == 1:
             result = func(child_values[0])
@@ -97,6 +104,95 @@ class ExpressionTokenizer:
     @staticmethod
     def render_value(value: float, precision: int) -> str:
         return f"{value:.{precision}f}"
+
+    @staticmethod
+    def render_trace_tokens(tokens: List[str]) -> str:
+        lines: List[str] = []
+        current: List[str] = []
+        indent = ""
+        skip_tokens = {"|bos|", "|eos|"}
+
+        def flush() -> None:
+            nonlocal current, indent
+            if current:
+                lines.append(indent + ExpressionTokenizer._format_trace_line(current))
+            current = []
+            indent = ""
+
+        for token in tokens:
+            if token in skip_tokens:
+                continue
+            if token == "|nl|":
+                flush()
+                continue
+            if token == "|indent|":
+                indent += "    "
+                continue
+            if token == "|sp|":
+                current.append(token)
+                continue
+            current.append(token)
+        flush()
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_trace_line(tokens: List[str]) -> str:
+        segments: List[List[str]] = [[]]
+        for token in tokens:
+            if token == "|sp|":
+                if segments[-1]:
+                    segments.append([])
+                continue
+            segments[-1].append(token)
+        return " ".join(
+            ExpressionTokenizer._format_trace_segment(segment)
+            for segment in segments
+            if segment
+        )
+
+    @staticmethod
+    def _format_trace_segment(tokens: List[str]) -> str:
+        chunks: List[str] = []
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
+            if token == "r" and index + 1 < len(tokens) and tokens[index + 1].isdigit():
+                j = index + 1
+                digits = []
+                while j < len(tokens) and tokens[j].isdigit():
+                    digits.append(tokens[j])
+                    j += 1
+                chunks.append("r" + "".join(digits))
+                index = j
+                continue
+
+            if token.isdigit() or (
+                token == "-"
+                and index + 1 < len(tokens)
+                and tokens[index + 1].isdigit()
+                and (index == 0 or tokens[index - 1] == "=")
+            ):
+                number_parts = [token]
+                j = index + 1
+                seen_dot = False
+                while j < len(tokens):
+                    if tokens[j].isdigit():
+                        number_parts.append(tokens[j])
+                        j += 1
+                        continue
+                    if tokens[j] == "." and not seen_dot and j + 1 < len(tokens) and tokens[j + 1].isdigit():
+                        seen_dot = True
+                        number_parts.append(tokens[j])
+                        j += 1
+                        continue
+                    break
+                chunks.append("".join(number_parts))
+                index = j
+                continue
+
+            chunks.append(token)
+            index += 1
+        return "".join(chunks)
 
 
 class SymbolicDatasetGenerator:
@@ -196,16 +292,27 @@ class SymbolicDatasetGenerator:
         value = expr.evaluate()
 
         input_tokens = ["|forward|"] + self.tokenizer.tokenize_expression(expr)
-        output_tokens = ["|bos|"] + self.tokenizer.tokenize_value(
+        think_tokens = self._build_forward_think_tokens(expr)
+        final_value_tokens = self.tokenizer.tokenize_value(
             value=value,
             precision=self.value_precision,
-        ) + ["|eos|"]
+        )
+        output_tokens = (
+            ["|bos|", "|beginOfThink|"]
+            + think_tokens
+            + ["|nl|", "|endOfThink|"]
+            + final_value_tokens
+            + ["|eos|"]
+        )
 
         return {
             "task": "forward",
             "value": value,
             "value_text": self.tokenizer.render_value(value, self.value_precision),
             "expression": expr.to_prefix_string(),
+            "think_tokens": think_tokens,
+            "think_text": self.tokenizer.render_trace_tokens(["|beginOfThink|"] + think_tokens + ["|nl|", "|endOfThink|"]),
+            "sft_text": self.tokenizer.render_trace_tokens(input_tokens + ["|nl|"] + output_tokens),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "target_tokens": output_tokens,
@@ -322,7 +429,7 @@ class SymbolicDatasetGenerator:
         value_len = len(self.tokenizer.tokenize_value_text(value_text))
 
         input_len = 1 + expr_len
-        output_len = 1 + value_len + 1
+        output_len = cfg.model.max_seq_len - input_len
         total_len = input_len + output_len
 
         return {
@@ -616,6 +723,348 @@ class SymbolicDatasetGenerator:
 
         raise NotImplementedError(f"Unsupported simplified sympy expression: {expr}")
 
+    def _build_forward_think_tokens(self, expr: ExpressionNode) -> List[str]:
+        node_ids: Dict[int, int] = {}
+
+        def assign_ids(node: ExpressionNode) -> None:
+            node_ids[id(node)] = len(node_ids)
+            for child in node.children or []:
+                assign_ids(child)
+
+        assign_ids(expr)
+        lines: List[List[str]] = []
+
+        def var_tokens(node: ExpressionNode) -> List[str]:
+            return [f"r{node_ids[id(node)]}"]
+
+        def emit(parts: List[str], indent: bool = False) -> None:
+            line = ["|nl|"]
+            if indent:
+                line.append("|indent|")
+            for part_index, part in enumerate(parts):
+                if part_index > 0:
+                    line.append("|sp|")
+                line.extend(self._trace_part_tokens(part))
+            lines.append(line)
+
+        def emit_structure(node: ExpressionNode) -> None:
+            if node.op == "leaf":
+                emit(var_tokens(node) + ["=", self._render_trace_value(node.evaluate())])
+                return
+            rhs = [node.op]
+            for child in node.children or []:
+                rhs.extend(var_tokens(child))
+            emit(var_tokens(node) + ["="] + rhs)
+            for child in node.children or []:
+                emit_structure(child)
+
+        def emit_compute(node: ExpressionNode) -> float:
+            if node.op == "leaf":
+                return node.evaluate()
+
+            child_values = [emit_compute(child) for child in node.children or []]
+            result = node.evaluate()
+            rendered_children = self._render_compute_args(node, child_values)
+            emit(var_tokens(node) + ["=", node.op] + rendered_children)
+            for detail_line, is_indented in self._operation_detail_lines(node, child_values, result):
+                emit(detail_line, indent=is_indented)
+            emit(var_tokens(node) + ["=", self._render_trace_value(result)])
+            return result
+
+        emit_structure(expr)
+        emit_compute(expr)
+        return [token for line in lines for token in line]
+
+    def _render_compute_args(self, node: ExpressionNode, child_values: List[float]) -> List[str]:
+        rendered: List[str] = []
+        for child, value in zip(node.children or [], child_values):
+            if node.op == "add" and child.op == "neg":
+                rendered.extend(["neg", self._render_trace_value(abs(value))])
+            else:
+                rendered.append(self._render_trace_value(value))
+        return rendered
+
+    def _operation_detail_lines(
+        self,
+        node: ExpressionNode,
+        child_values: List[float],
+        result: float,
+    ) -> List[Tuple[List[str], bool]]:
+        op = node.op
+        if op == "add":
+            return self._add_detail_lines(
+                child_values[0],
+                child_values[1],
+                left_node=node.children[0],
+                right_node=node.children[1],
+            )
+        if op == "mul":
+            return self._mul_detail_lines(child_values[0], child_values[1], result)
+        if op == "ladd":
+            if all(self._is_nonnegative_int(value) for value in child_values):
+                values = [int(round(value)) for value in child_values]
+                return [(["ladd", "("] + [str(value) for value in values] + [")"], True)] + self._ladd_detail_lines(values)
+            rendered_values = [self._render_trace_value(value) for value in child_values]
+            return [(["ladd", "("] + rendered_values + [")"], True), (["=", self._render_trace_value(result)], True)]
+        if op == "neg":
+            value = self._render_trace_value(child_values[0])
+            rendered_result = self._render_trace_value(result)
+            return [(["neg", value], True), (["=", rendered_result], True)]
+        if op == "inv":
+            value = self._render_trace_value(child_values[0])
+            rendered_result = self._render_trace_value(result)
+            return [(["inv", value], True), (["=", rendered_result], True)]
+        if op == "sqrt":
+            value = self._render_trace_value(child_values[0])
+            rendered_result = self._render_trace_value(result)
+            return [(["sqrt", value], True), (["=", rendered_result], True)]
+        return [([op] + [self._render_trace_value(value) for value in child_values], True), (["=", self._render_trace_value(result)], True)]
+
+    def _add_detail_lines(
+        self,
+        left: float,
+        right: float,
+        left_node: Optional[ExpressionNode] = None,
+        right_node: Optional[ExpressionNode] = None,
+    ) -> List[Tuple[List[str], bool]]:
+        rendered_left = self._render_trace_value(left)
+        rendered_right = self._render_trace_value(right)
+        if (
+            left_node is not None
+            and right_node is not None
+            and left_node.op == "neg"
+            and self._is_nonnegative_int(abs(left))
+            and self._is_nonnegative_int(right)
+        ):
+            magnitude = abs(int(round(left)))
+            other = int(round(right))
+            lines: List[Tuple[List[str], bool]] = [
+                (["=", "add", str(other), "neg", str(magnitude)], True),
+                (["=", "sub", str(other), str(magnitude)], True),
+            ]
+            if other >= magnitude:
+                lines.extend(self._sub_detail_lines(other, magnitude, indent=True))
+            else:
+                lines.append((["=", "neg", "sub", str(magnitude), str(other)], True))
+                lines.extend(self._sub_detail_lines(magnitude, other, indent=True))
+                lines.append((["=", "neg", str(magnitude - other)], True))
+            return lines
+
+        if (
+            left_node is not None
+            and right_node is not None
+            and right_node.op == "neg"
+            and self._is_nonnegative_int(left)
+            and self._is_nonnegative_int(abs(right))
+        ):
+            magnitude = abs(int(round(right)))
+            other = int(round(left))
+            lines = [
+                (["=", "add", str(other), "neg", str(magnitude)], True),
+                (["=", "sub", str(other), str(magnitude)], True),
+            ]
+            if other >= magnitude:
+                lines.extend(self._sub_detail_lines(other, magnitude, indent=True))
+            else:
+                lines.append((["=", "neg", "sub", str(magnitude), str(other)], True))
+                lines.extend(self._sub_detail_lines(magnitude, other, indent=True))
+                lines.append((["=", "neg", str(magnitude - other)], True))
+            return lines
+
+        if not self._is_nonnegative_int(left) or not self._is_nonnegative_int(right):
+            result = self._render_trace_value(left + right)
+            return [(["add", rendered_left, rendered_right], True), (["=", result], True)]
+
+        left_text = str(int(round(left)))
+        right_text = str(int(round(right)))
+        width = max(len(left_text), len(right_text))
+        left_pad = left_text.zfill(width)
+        right_pad = right_text.zfill(width)
+        pairs = list(zip(reversed(left_pad), reversed(right_pad)))
+
+        carry = 0
+        pair_results: List[Tuple[str, str]] = []
+        for left_digit, right_digit in pairs:
+            column_sum = int(left_digit) + int(right_digit)
+            pair_results.append((str(column_sum % 10), str(column_sum // 10)))
+
+        result_text = str(int(left_text) + int(right_text))
+        padded_result = result_text.zfill(width + 1)
+        add_pos = ["=", "addPos"]
+        add_pos_res = ["=", "addPosRes"]
+        add_res_carry = ["=", "addRes"]
+        add_res_digits = ["=", "addRes"]
+
+        for left_digit, right_digit in pairs:
+            add_pos.extend(["(", left_digit, right_digit, ")"])
+        for digit, next_carry in pair_results:
+            add_pos_res.extend(["(", digit, next_carry, ")"])
+
+        carry_groups: List[List[str]] = [[pair_results[0][0]]]
+        add_res_carry.append(pair_results[0][0])
+        for previous_pair, current_pair in zip(pair_results, pair_results[1:]):
+            group = [previous_pair[1], current_pair[0]]
+            carry_groups.append(group)
+            add_res_carry.extend(["(", *group, ")"])
+        carry_groups.append([pair_results[-1][1]])
+        add_res_carry.append(pair_results[-1][1])
+
+        carry = 0
+        for group in carry_groups:
+            group_sum = sum(int(value) for value in group) + carry
+            add_res_digits.append(str(group_sum % 10))
+            carry = group_sum // 10
+        if carry:
+            add_res_digits.append(str(carry))
+
+        return [
+            (["add", left_text, right_text], True),
+            (["=", "addPad", left_pad, right_pad], True),
+            (add_pos, True),
+            (add_pos_res, True),
+            (add_res_carry, True),
+            (add_res_digits, True),
+            (["=", padded_result], True),
+            (["=", result_text], True),
+        ]
+
+    def _sub_detail_lines(
+        self,
+        left: int,
+        right: int,
+        indent: bool = True,
+    ) -> List[Tuple[List[str], bool]]:
+        if left < right:
+            raise ValueError("sub detail requires left >= right.")
+
+        left_text = str(left)
+        right_text = str(right)
+        width = max(len(left_text), len(right_text))
+        left_pad = left_text.zfill(width)
+        right_pad = right_text.zfill(width)
+        current_digits = [int(ch) for ch in reversed(left_pad)]
+        right_digits = [int(ch) for ch in reversed(right_pad)]
+
+        sub_pos_lines: List[List[str]] = []
+        initial_sub_pos = ["=", "subPos"]
+        for left_digit, right_digit in zip(current_digits, right_digits):
+            initial_sub_pos.extend(["(", str(left_digit), str(right_digit), ")"])
+        sub_pos_lines.append(initial_sub_pos)
+
+        for index in range(width):
+            if current_digits[index] < right_digits[index]:
+                borrow_index = index + 1
+                while borrow_index < width and current_digits[borrow_index] == 0:
+                    borrow_index += 1
+                if borrow_index >= width:
+                    raise ValueError("No borrow source found in subtraction.")
+                current_digits[borrow_index] -= 1
+                for zero_index in range(borrow_index - 1, index, -1):
+                    current_digits[zero_index] += 9
+                current_digits[index] += 10
+
+                sub_pos = ["=", "subPos"]
+                for left_digit, right_digit in zip(current_digits, right_digits):
+                    sub_pos.extend(["(", str(left_digit), str(right_digit), ")"])
+                sub_pos_lines.append(sub_pos)
+
+        result_digits = [str(current_digits[index] - right_digits[index]) for index in range(width)]
+        result_text = str(left - right)
+        padded_result = result_text.zfill(width)
+
+        return [
+            (["sub", left_text, right_text], indent),
+            (["=", "subPad", left_pad, right_pad], indent),
+            *[(line, indent) for line in sub_pos_lines],
+            (["=", "subRes"] + result_digits, indent),
+            (["=", padded_result], indent),
+        ]
+
+    def _mul_detail_lines(self, left: float, right: float, result: float) -> List[Tuple[List[str], bool]]:
+        rendered_left = self._render_trace_value(left)
+        rendered_right = self._render_trace_value(right)
+        rendered_result = self._render_trace_value(result)
+        if not self._is_nonnegative_int(left) or not self._is_nonnegative_int(right):
+            return [(["mul", rendered_left, rendered_right], True), (["=", rendered_result], True)]
+
+        left_parts = self._place_parts(int(round(left)))
+        right_parts = self._place_parts(int(round(right)))
+        partials = [left_part * right_part for left_part in left_parts for right_part in right_parts]
+
+        lines: List[Tuple[List[str], bool]] = [
+            (["mul"] + self._nested_add_tokens(left_parts) + self._nested_add_tokens(right_parts), True)
+        ]
+        mul_terms: List[str] = []
+        for left_part in left_parts:
+            for right_part in right_parts:
+                mul_terms.extend(["mul", str(left_part), str(right_part)])
+        lines.append((["=", "ladd", "("] + mul_terms + [")"], False))
+        lines.append((["=", "ladd", "("] + [str(partial) for partial in partials] + [")"], False))
+        lines.extend(self._ladd_detail_lines(partials))
+        lines.append((["=", rendered_result], False))
+        return lines
+
+    def _ladd_detail_lines(self, values: List[int]) -> List[Tuple[List[str], bool]]:
+        if not values:
+            return []
+        if len(values) == 1:
+            return [(["=", str(values[0])], False)]
+
+        lines: List[Tuple[List[str], bool]] = []
+        current_tokens = self._nested_add_tokens(values)
+        lines.append((["="] + current_tokens, False))
+
+        pending = list(values)
+        while len(pending) > 1:
+            right = pending[-1]
+            left = pending[-2]
+            add_result = left + right
+            lines.extend(self._add_detail_lines(left, right))
+            pending = pending[:-2] + [add_result]
+            lines.append((["="] + self._nested_add_tokens(pending), False))
+        return lines
+
+    def _nested_add_tokens(self, values: List[int]) -> List[str]:
+        if not values:
+            return ["0"]
+        if len(values) == 1:
+            return [str(values[0])]
+        return ["add", str(values[0])] + self._nested_add_tokens(values[1:])
+
+    @staticmethod
+    def _place_parts(value: int) -> List[int]:
+        if value == 0:
+            return [0]
+        digits = list(str(value))
+        width = len(digits)
+        parts = []
+        for index, digit in enumerate(digits):
+            part = int(digit) * (10 ** (width - index - 1))
+            if part != 0:
+                parts.append(part)
+        return parts or [0]
+
+    @staticmethod
+    def _is_nonnegative_int(value: float) -> bool:
+        return value >= 0 and abs(value - round(value)) < 1e-9
+
+    def _render_trace_value(self, value: float) -> str:
+        if abs(value - round(value)) < 1e-9:
+            return str(int(round(value)))
+        return self.tokenizer.render_value(value, self.value_precision)
+
+    @staticmethod
+    def _trace_part_tokens(part: str) -> List[str]:
+        if part.startswith("r") and len(part) > 1 and part[1:].isdigit():
+            return ["r"] + list(part[1:])
+        if part in cfg.all_tokens:
+            return [part]
+        return list(part)
+
+    def parse_manual_expression(self, text: str) -> ExpressionNode:
+        parser = _ManualExpressionParser(text)
+        return parser.parse()
+
     @staticmethod
     def _build_add_chain(nodes: List[ExpressionNode]) -> ExpressionNode:
         if not nodes:
@@ -635,8 +1084,114 @@ class SymbolicDatasetGenerator:
         return current
 
 
+class _ManualExpressionParser:
+    def __init__(self, text: str):
+        self.text = text
+        self.index = 0
+        self.manual_ops = {"add", "mul", "neg", "inv", "sqrt", "ladd"}
+
+    def parse(self) -> ExpressionNode:
+        node = self._parse_expr()
+        self._skip_ws()
+        if self.index != len(self.text):
+            raise ValueError(f"Unexpected trailing input near: {self.text[self.index:]}")
+        return node
+
+    def _parse_expr(self) -> ExpressionNode:
+        self._skip_ws()
+        if self.index >= len(self.text):
+            raise ValueError("Unexpected end of input.")
+
+        if self.text[self.index].isdigit() or self.text[self.index] == "-":
+            return self._parse_number()
+
+        name = self._parse_name()
+        if name not in self.manual_ops:
+            raise ValueError(f"Unsupported manual expression op: {name}")
+
+        self._skip_ws()
+        self._expect("(")
+        args: List[ExpressionNode] = []
+        self._skip_ws()
+        if self._peek() != ")":
+            while True:
+                args.append(self._parse_expr())
+                self._skip_ws()
+                if self._peek() != ",":
+                    break
+                self.index += 1
+        self._expect(")")
+
+        if name in {"add", "mul"} and len(args) != 2:
+            raise ValueError(f"{name} expects exactly 2 args.")
+        if name in {"neg", "inv", "sqrt"} and len(args) != 1:
+            raise ValueError(f"{name} expects exactly 1 arg.")
+        if name == "ladd" and not args:
+            raise ValueError("ladd expects at least 1 arg.")
+        return ExpressionNode(op=name, children=args)
+
+    def _parse_number(self) -> ExpressionNode:
+        sign = 1
+        if self.text[self.index] == "-":
+            sign = -1
+            self.index += 1
+        start = self.index
+        while self.index < len(self.text) and self.text[self.index].isdigit():
+            self.index += 1
+        if start == self.index:
+            raise ValueError("Expected digits after '-'.")
+        value = int(self.text[start:self.index]) * sign
+        if value < 0:
+            return ExpressionNode(
+                op="neg",
+                children=[ExpressionNode(op="leaf", value=abs(value), children=[])],
+            )
+        return ExpressionNode(op="leaf", value=value, children=[])
+
+    def _parse_name(self) -> str:
+        start = self.index
+        while self.index < len(self.text) and (self.text[self.index].isalpha() or self.text[self.index] == "_"):
+            self.index += 1
+        if start == self.index:
+            raise ValueError(f"Expected operator near: {self.text[self.index:]}")
+        return self.text[start:self.index]
+
+    def _skip_ws(self) -> None:
+        while self.index < len(self.text) and self.text[self.index].isspace():
+            self.index += 1
+
+    def _peek(self) -> str:
+        self._skip_ws()
+        if self.index >= len(self.text):
+            return ""
+        return self.text[self.index]
+
+    def _expect(self, char: str) -> None:
+        self._skip_ws()
+        if self.index >= len(self.text) or self.text[self.index] != char:
+            found = self.text[self.index : self.index + 1]
+            raise ValueError(f"Expected '{char}', found '{found}'.")
+        self.index += 1
+
+
 if __name__ == "__main__":
+    cli_parser = argparse.ArgumentParser()
+    cli_parser.add_argument("--trace", "-t", help="Manual expression, e.g. 'ladd(34,45,mul(4,5))'.")
+    args = cli_parser.parse_args()
+
     generator = SymbolicDatasetGenerator(seed=44, value_precision=5)
+    if args.trace:
+        expr = generator.parse_manual_expression(args.trace)
+        value = expr.evaluate()
+        think_tokens = generator._build_forward_think_tokens(expr)
+        think_text = generator.tokenizer.render_trace_tokens(
+            ["|beginOfThink|"] + think_tokens + ["|nl|", "|endOfThink|"]
+        )
+        print(f"expression : {expr.to_prefix_string()}")
+        print(f"value      : {generator._render_trace_value(value)}")
+        print("think text :")
+        print(think_text)
+        raise SystemExit(0)
 
     print("=== sample space estimate ===")
     print(generator.estimate_sample_space())
@@ -654,6 +1209,10 @@ if __name__ == "__main__":
     print(f"input      : {forward_example['input_tokens']}")
     print(f"output     : {forward_example['output_tokens']}")
     print(f"full len   : {len(forward_example['full_tokens'])}")
+    print("think text :")
+    print(forward_example["think_text"])
+    print("sft text   :")
+    print(forward_example["sft_text"])
 
     print("\n=== inverse example ===")
     print(f"value      : {inverse_example['value_text']}")
