@@ -160,3 +160,7 @@ mul add 40 6 add 50 6
 
 
 python3 data_generate.py --trace 'ladd(34,45,mul(4,5))'
+
+
+nohup python3 -u train.py > train.log 2>&1 &
+

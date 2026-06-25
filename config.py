@@ -75,7 +75,7 @@ cfg.dataset.value_precision = 5
 
 cfg.model = argparse.Namespace()
 cfg.model.use_rope = True
-cfg.model.max_seq_len = 8192
+cfg.model.max_seq_len = 2304
 cfg.model.layer_num = 24
 cfg.model.hidden_dim = 128
 cfg.model.head_num = 8
@@ -94,7 +94,7 @@ cfg.model.output_vocab_size = len(cfg.all_tokens)
 
 cfg.train = argparse.Namespace()
 cfg.train.seed = 42
-cfg.train.batch_size = 32
+cfg.train.batch_size = 4
 cfg.train.lr = 3e-4
 cfg.train.weight_decay = 0.01
 cfg.train.grad_clip = 1.0
@@ -120,6 +120,6 @@ cfg.eval = argparse.Namespace()
 cfg.eval.device = "mps"
 cfg.eval.batch_size = 64
 cfg.eval.sample_num = 2
-cfg.eval.max_new_tokens = 8192
+cfg.eval.max_new_tokens = 2304
 cfg.eval.task_names = ["forward", "inverse", "simplify"]
 cfg.eval.ckpt_path = None

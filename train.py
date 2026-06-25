@@ -38,12 +38,13 @@ def sample_training_batch(
     batch_size: int,
 ) -> Dict[str, torch.Tensor]:
     task_weights = resolve_task_weights()
-    examples = [
-        generator.sample_example(
+    examples = []
+    while len(examples) < batch_size:
+        example = generator.sample_example(
             task=random.choices(cfg.train.task_names, weights=task_weights, k=1)[0]
         )
-        for _ in range(batch_size)
-    ]
+        if len(example["full_tokens"]) <= cfg.model.max_seq_len:
+            examples.append(example)
 
     max_len = max(len(example["full_tokens"]) for example in examples)
     pad_id = vocab.eos_id
