@@ -1,19 +1,19 @@
-step=2000
+step=8200
 
 [1] task=forward
-input      : |forward|add(367,427)
-target     : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r2|nl|r1|sp|=|sp|367|nl|r2|sp|=|sp|427|nl|r0|sp|=|sp|add|sp|367|sp|427|nl||indent|add|sp|367|sp|427|nl||indent|=|sp|addPad|sp|367|sp|427|nl||indent|=|sp|addPos|sp|(|sp|7|sp|7|sp|)|sp|(|sp|6|sp|2|sp|)|sp|(|sp|3|sp|4|sp|)|nl||indent|=|sp|addPosRes|sp|(|sp|4|sp|1|sp|)|sp|(|sp|8|sp|0|sp|)|sp|(|sp|7|sp|0|sp|)|nl||indent|=|sp|addRes|sp|4|sp|(|sp|1|sp|8|sp|)|sp|(|sp|0|sp|7|sp|)|sp|0|nl||indent|=|sp|addRes|sp|4|sp|9|sp|7|sp|0|nl||indent|=|sp|0794|nl||indent|=|sp|794|nl|r0|sp|=|sp|794|nl||endOfThink|794.00000|eos|
-prediction : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r2|nl|r1|sp|=|sp|367|nl|r2|sp|=|sp|149|nl|r0|sp|=|sp|add|sp|367|sp|149|nl||indent|add|sp|367|sp|149|nl||indent|=|sp|addPad|sp|367|sp|149|nl||indent|=|sp|addPos|sp|(|sp|7|sp|9|sp|)|sp|(|sp|6|sp|4|sp|)|sp|(|sp|3|sp|1|sp|)|nl||indent|=|sp|addPosRes|sp|(|sp|2|sp|1|sp|)|sp|(|sp|2|sp|1|sp|)|sp|(|sp|4|sp|0|sp|)|nl||indent|=|sp|addRes|sp|2|sp|(|sp|1|sp|2|sp|)|sp|(|sp|1|sp|4|sp|)|sp|0|nl||indent|=|sp|addRes|sp|2|sp|2|sp|8|sp|0|nl||indent|=|sp|0822|nl||indent|=|sp|822|nl|r0|sp|=|sp|822|nl||endOfThink|822.00000|eos|
+input      : |forward|add(neg(87),400)
+target     : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r3|nl|r1|sp|=|sp|neg|sp|r2|nl|r2|sp|=|sp|87|nl|r3|sp|=|sp|400|nl|r1|sp|=|sp|neg|sp|87|nl||indent|neg|sp|87|nl||indent|=|sp|-87|nl|r1|sp|=|sp|-87|nl|r0|sp|=|sp|add|sp|neg|sp|87|sp|400|nl||indent|=|sp|add|sp|400|sp|neg|sp|87|nl||indent|=|sp|sub|sp|400|sp|87|nl||indent|sub|sp|400|sp|87|nl||indent|=|sp|subPad|sp|400|sp|087|nl||indent|=|sp|subPos|sp|(|sp|0|sp|7|sp|)|sp|(|sp|0|sp|8|sp|)|sp|(|sp|4|sp|0|sp|)|nl||indent|=|sp|subPos|sp|(|sp|10|sp|7|sp|)|sp|(|sp|9|sp|8|sp|)|sp|(|sp|3|sp|0|sp|)|nl||indent|=|sp|subRes|sp|3|sp|1|sp|3|nl||indent|=|sp|313|nl|r0|sp|=|sp|313|nl||endOfThink|313.00000|eos|
+prediction : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r3|nl|r1|sp|=|sp|neg|sp|r2|nl|r2|sp|=|sp|87|nl|r3|sp|=|sp|400|nl|r1|sp|=|sp|neg|sp|87|nl||indent|neg|sp|87|nl||indent|=|sp|-87|nl|r1|sp|=|sp|-87|nl|r0|sp|=|sp|add|sp|neg|sp|87|sp|400|nl||indent|=|sp|add|sp|400|sp|neg|sp|87|nl||indent|=|sp|sub|sp|400|sp|87|nl||indent|sub|sp|400|sp|87|nl||indent|=|sp|subPad|sp|400|sp|087|nl||indent|=|sp|subPos|sp|(|sp|0|sp|7|sp|)|sp|(|sp|0|sp|8|sp|)|sp|(|sp|4|sp|0|sp|)|nl||indent|=|sp|subPos|sp|(|sp|10|sp|7|sp|)|sp|(|sp|9|sp|8|sp|)|sp|(|sp|3|sp|0|sp|)|nl||indent|=|sp|subRes|sp|4|sp|1|sp|3|nl||indent|=|sp|314|nl|r0|sp|=|sp|314|nl||endOfThink|314.00000|eos|
 exact_match: False
 success    : False
 invalid    : False
-gap        : pred=822.0000000000, target=794.0000000000, abs_diff=28.0000000000
+gap        : pred=314.0000000000, target=313.0000000000, abs_diff=1.0000000000
 
 [2] task=forward
-input      : |forward|add(404,neg(146))
-target     : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r2|nl|r1|sp|=|sp|404|nl|r2|sp|=|sp|neg|sp|r3|nl|r3|sp|=|sp|146|nl|r2|sp|=|sp|neg|sp|146|nl||indent|neg|sp|146|nl||indent|=|sp|-146|nl|r2|sp|=|sp|-146|nl|r0|sp|=|sp|add|sp|404|sp|neg|sp|146|nl||indent|=|sp|add|sp|404|sp|neg|sp|146|nl||indent|=|sp|sub|sp|404|sp|146|nl||indent|sub|sp|404|sp|146|nl||indent|=|sp|subPad|sp|404|sp|146|nl||indent|=|sp|subPos|sp|(|sp|4|sp|6|sp|)|sp|(|sp|0|sp|4|sp|)|sp|(|sp|4|sp|1|sp|)|nl||indent|=|sp|subPos|sp|(|sp|14|sp|6|sp|)|sp|(|sp|9|sp|4|sp|)|sp|(|sp|3|sp|1|sp|)|nl||indent|=|sp|subRes|sp|8|sp|5|sp|2|nl||indent|=|sp|258|nl|r0|sp|=|sp|258|nl||endOfThink|258.00000|eos|
-prediction : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r2|nl|r1|sp|=|sp|409|nl|r2|sp|=|sp|neg|sp|r3|nl|r3|sp|=|sp|247|nl|r2|sp|=|sp|neg|sp|247|nl||indent|neg|sp|247|nl||indent|=|sp|-247|nl|r2|sp|=|sp|-247|nl|r0|sp|=|sp|add|sp|409|sp|neg|sp|247|nl||indent|=|sp|add|sp|409|sp|neg|sp|247|nl||indent|=|sp|sub|sp|409|sp|247|nl||indent|sub|sp|409|sp|247|nl||indent|=|sp|subPad|sp|409|sp|247|nl||indent|=|sp|subPos|sp|(|sp|9|sp|7|sp|)|sp|(|sp|0|sp|4|sp|)|sp|(|sp|4|sp|2|sp|)|nl||indent|=|sp|subPos|sp|(|sp|9|sp|7|sp|)|sp|(|sp|10|sp|4|sp|)|sp|(|sp|3|sp|2|sp|)|nl||indent|=|sp|subRes|sp|4|sp|4|sp|2|nl||indent|=|sp|244|nl|r0|sp|=|sp|244|nl||endOfThink|244.00000|eos|
-exact_match: False
-success    : False
+input      : |forward|add(290,neg(381))
+target     : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r2|nl|r1|sp|=|sp|290|nl|r2|sp|=|sp|neg|sp|r3|nl|r3|sp|=|sp|381|nl|r2|sp|=|sp|neg|sp|381|nl||indent|neg|sp|381|nl||indent|=|sp|-381|nl|r2|sp|=|sp|-381|nl|r0|sp|=|sp|add|sp|290|sp|neg|sp|381|nl||indent|=|sp|add|sp|290|sp|neg|sp|381|nl||indent|=|sp|sub|sp|290|sp|381|nl||indent|=|sp|neg|sp|sub|sp|381|sp|290|nl||indent|sub|sp|381|sp|290|nl||indent|=|sp|subPad|sp|381|sp|290|nl||indent|=|sp|subPos|sp|(|sp|1|sp|0|sp|)|sp|(|sp|8|sp|9|sp|)|sp|(|sp|3|sp|2|sp|)|nl||indent|=|sp|subPos|sp|(|sp|1|sp|0|sp|)|sp|(|sp|18|sp|9|sp|)|sp|(|sp|2|sp|2|sp|)|nl||indent|=|sp|subRes|sp|1|sp|9|sp|0|nl||indent|=|sp|091|nl||indent|=|sp|neg|sp|91|nl|r0|sp|=|sp|-91|nl||endOfThink|-91.00000|eos|
+prediction : |bos||beginOfThink||nl|r0|sp|=|sp|add|sp|r1|sp|r2|nl|r1|sp|=|sp|290|nl|r2|sp|=|sp|neg|sp|r3|nl|r3|sp|=|sp|381|nl|r2|sp|=|sp|neg|sp|381|nl||indent|neg|sp|381|nl||indent|=|sp|-381|nl|r2|sp|=|sp|-381|nl|r0|sp|=|sp|add|sp|290|sp|neg|sp|381|nl||indent|=|sp|add|sp|290|sp|neg|sp|381|nl||indent|=|sp|sub|sp|290|sp|381|nl||indent|=|sp|neg|sp|sub|sp|381|sp|290|nl||indent|sub|sp|381|sp|290|nl||indent|=|sp|subPad|sp|381|sp|290|nl||indent|=|sp|subPos|sp|(|sp|1|sp|0|sp|)|sp|(|sp|8|sp|9|sp|)|sp|(|sp|3|sp|2|sp|)|nl||indent|=|sp|subPos|sp|(|sp|1|sp|0|sp|)|sp|(|sp|18|sp|9|sp|)|sp|(|sp|2|sp|2|sp|)|nl||indent|=|sp|subRes|sp|1|sp|9|sp|0|nl||indent|=|sp|091|nl||indent|=|sp|neg|sp|91|nl|r0|sp|=|sp|-91|nl||endOfThink|-91.00000|eos|
+exact_match: True
+success    : True
 invalid    : False
-gap        : pred=244.0000000000, target=258.0000000000, abs_diff=14.0000000000
+gap        : pred=-91.0000000000, target=-91.0000000000, abs_diff=0.0000000000

@@ -4,8 +4,8 @@
   ],
   "all_tasks": {
     "forward": {
-      "template_count": 6,
-      "raw_expression_count": 1500000
+      "template_count": 4,
+      "raw_expression_count": 1000000
     },
     "inverse": {
       "template_count": 5,
@@ -18,8 +18,8 @@
   },
   "active_task_sample_space": {
     "forward": {
-      "template_count": 6,
-      "raw_expression_count": 1500000
+      "template_count": 4,
+      "raw_expression_count": 1000000
     }
   }
 }

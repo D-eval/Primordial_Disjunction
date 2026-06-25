@@ -309,7 +309,7 @@ def main() -> None:
             print(log_payload)
             append_jsonl(train_log_path, log_payload)
 
-        if step % cfg.train.eval_per_step == 0:
+        if cfg.train.eval_per_step > 0 and step % cfg.train.eval_per_step == 0:
             metrics, visual_records = evaluate_model(
                 model=model,
                 vocab=vocab,

@@ -10,8 +10,8 @@ forward_template = [
     "add leaf neg leaf",
     
     # 普通除法
-    "mul leaf inv leaf",
-    "mul inv leaf leaf",
+    # "mul leaf inv leaf",
+    # "mul inv leaf leaf",
     
     # 混合运算
     # "mul leaf add leaf leaf",

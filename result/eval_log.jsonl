@@ -421,3 +421,8 @@
 {"forward": {"exact_match_rate": 0.5, "numeric_success_rate": 0.5, "invalid_rate": 0.0}, "step": 72000}
 {"forward": {"exact_match_rate": 0.5, "numeric_success_rate": 0.5, "invalid_rate": 0.0}, "step": 74000}
 {"forward": {"exact_match_rate": 0.0, "numeric_success_rate": 0.0, "invalid_rate": 0.0}, "step": 2000}
+{"forward": {"exact_match_rate": 0.0, "numeric_success_rate": 0.0, "invalid_rate": 0.5}, "step": 4000}
+{"forward": {"exact_match_rate": 0.0, "numeric_success_rate": 0.0, "invalid_rate": 0.0}, "step": 6000}
+{"forward": {"exact_match_rate": 0.0, "numeric_success_rate": 0.0, "invalid_rate": 0.0}, "step": 8000}
+{"forward": {"exact_match_rate": 0.0, "numeric_success_rate": 0.0, "invalid_rate": 0.0}, "step": 8100}
+{"forward": {"exact_match_rate": 0.5, "numeric_success_rate": 0.5, "invalid_rate": 0.0}, "step": 8200}
